@@ -1,23 +1,64 @@
-# Dynamic Zero-Trust Policy Synthesis via eBPF Profiling
+# 🛡️ eBPF Zero-Trust Policies
 
-A modern, automated DevSecOps pipeline that dynamically generates least-privilege Kubernetes NetworkPolicies by profiling container socket connections at the Linux kernel level using eBPF.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
----
-
-## 🚨 The Challenge of Zero-Trust Network Policies
-
-In a secure Kubernetes cluster, pods should operate under a **Zero-Trust** network architecture. By default, Kubernetes allows all pods to communicate with each other. Securing this requires writing manual `NetworkPolicies`. 
-
-However, manual policy configuration suffers from:
-1. **High Complexity**: Developers must map every DNS request, database port, external API endpoint, and internal service dependency.
-2. **Broken Applications**: To avoid breaking changes, developers often resort to permissive wildcard policies (e.g., allowing all ingress/egress), defeating the purpose of network security.
-3. **Static Limitations**: Static Application Security Testing (SAST) tools cannot predict dynamic runtime dependencies.
+A modern, automated DevSecOps pipeline that dynamically generates **least-privilege Kubernetes NetworkPolicies** by profiling container socket connections at the Linux kernel level using **eBPF**.
 
 ---
 
-## 💡 The eBPF Solution
+## 🤯 The Challenge & The eBPF Solution
 
-This project solves the configuration bottleneck by **shifting security left** and automating policy design through runtime observation.
+Writing Kubernetes `NetworkPolicies` manually is tedious and error-prone. To avoid breaking applications in production, developers often resort to overly permissive "allow-all" rules. 
+
+This project **shifts security left** by observing what your application *actually does* during testing, and automatically generating a strict Zero-Trust policy.
+
+### Before (Manual & Insecure)
+Developers guess what network access is needed, or give up and allow everything:
+```yaml
+ingress: [] # Allows ALL incoming traffic - DANGEROUS!
+```
+
+### After (Auto-Generated & Secure)
+Our eBPF tracer observes the exact API and database calls your app makes, and synthesizes a strict, custom-tailored policy:
+```yaml
+ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend-api # Only allows traffic from the exact pods that need it
+```
+
+---
+
+## 🚀 Quickstart: Run the Demo
+
+Want to see the magic in action? You can run the entire pipeline locally to see how eBPF traces our example Node.js app.
+
+**Prerequisites:** `docker`, `kubectl`, `minikube`
+
+Just run our 1-click setup script:
+```bash
+./run-demo.sh
+```
+
+*(This will start a Minikube cluster with Calico, install Inspektor Gadget, deploy the example app, trace the traffic, and generate your Zero-Trust policy in the `policies/` directory!)*
+
+---
+
+## 🛠️ How to Use This For Your Own Projects
+
+This repository is designed to be a template for your own applications. Instead of profiling our dummy app, you can profile your production services!
+
+1. **Use this template:** Click the green **"Use this template"** button at the top of the GitHub repository.
+2. **Bring your code:** Replace the contents of the `app/` folder with your own Dockerized application (or microservices).
+3. **Update Manifests:** Modify the YAML files in `kubernetes/` to match your application's deployment needs.
+4. **Update the Traffic Generator:** Open `scripts/synthesize.sh`. In **Step 3**, modify the `curl` commands to trigger your application's actual internal and external endpoints. *(Alternatively, trigger your automated integration test suite here).*
+5. **Push and Automate:** When you open a Pull Request, the included GitHub Action (`.github/workflows/policy-synthesis.yml`) will automatically spin up a test cluster, profile your app, and commit the generated `NetworkPolicy` back to your branch!
+
+---
+
+## 🧠 How It Works Under the Hood
 
 ```mermaid
 graph TD
@@ -27,7 +68,7 @@ graph TD
         CreateCluster --> InstallCalico[2. Install Calico CNI]
         InstallCalico --> DeployGadget[3. Deploy Inspektor Gadget]
         DeployGadget --> BuildImage[4. Build App Container]
-        BuildImage --> DeployApp[5. Deploy App & Redis]
+        BuildImage --> DeployApp[5. Deploy App & DB]
     end
     DeployApp --> Tracing[eBPF Advisor Captures socket calls]
     Tracing --> RunTests[Run in-cluster Integration Tests]
@@ -36,96 +77,27 @@ graph TD
     CommitBack --> GitOps[ArgoCD Deploys secure App + NetworkPolicy to Prod]
 ```
 
-Instead of developers writing policies, the CI pipeline:
-1. Deploys the code to a temporary, isolated Kubernetes namespace.
-2. Starts a kernel-level **eBPF tracer** (Inspektor Gadget).
-3. Runs the application test suite to trigger database and API traffic.
-4. Synthesizes a strict, custom-tailored `NetworkPolicy` from the traced socket connections.
-5. Commits the YAML policy directly back to the Git branch.
-
 ---
 
-## 📂 Project Directory Structure
+## 📂 Project Structure
 
 ```text
 .
-├── .github/
-│   └── workflows/
-│       └── policy-synthesis.yml   # CI Pipeline orchestrator (KinD + eBPF setup)
-├── app/
-│   ├── tests/
-│   │   └── integration.test.js    # Integration test suite
-│   ├── index.js                   # Node.js target app (database + external calls)
-│   ├── package.json               # App dependencies (Express, Redis client)
-│   └── Dockerfile                 # Multi-stage Docker packaging configuration
-├── kubernetes/
-│   ├── app.yaml                   # Target application deployment & service
-│   └── redis.yaml                  # Database deployment & service
-├── policies/
-│   └── synthesized-policies.yaml  # Auto-generated least-privilege NetworkPolicies
-└── scripts/
-    └── synthesize.sh              # Local/CI automation orchestration script
+├── .github/workflows/
+│   └── policy-synthesis.yml   # CI Pipeline orchestrator
+├── app/                       # 👈 REPLACE THIS with your application code
+├── kubernetes/                # 👈 REPLACE THIS with your deployment YAMLs
+├── scripts/
+│   └── synthesize.sh          # eBPF automation & traffic generation
+├── policies/                  
+│   └── synthesized-policies.yaml  # Where your generated policies will appear!
+└── run-demo.sh                # Local 1-click execution script
 ```
 
 ---
 
-## 🛠️ Technology Stack
+## 🤝 Contributing
+We welcome community contributions! If you want to add support for a new CNI (like Cilium) or improve the automation scripts, please open a Pull Request. For major changes, please open an Issue first to discuss what you would like to change.
 
-* **Kubernetes Networking (CNI)**: Calico (supports NetworkPolicy enforcement)
-* **eBPF Engine**: Inspektor Gadget (Core advise/network-policy sensor)
-* **CI/CD Platform**: GitHub Actions
-* **Local Cluster Platform**: Minikube / KinD (Kubernetes in Docker)
-* **Database & App**: Redis (database), Node.js (Express framework)
-
----
-
-## 🏁 Quickstart: Run Locally
-
-Follow these steps to execute the eBPF profiling pipeline locally on your system:
-
-### 1. Prerequisite: Local Cluster Setup
-Start Minikube with Calico CNI enabled:
-```bash
-minikube start --driver=docker --cni=calico
-```
-
-### 2. Install Inspektor Gadget CLI
-Download the latest client binary and deploy the cluster-wide daemonsets:
-```bash
-# Fetch latest version and download binary
-IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name)
-curl -sL "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/kubectl-gadget-linux-amd64-${IG_VERSION}.tar.gz" | tar -C /tmp -xz
-sudo mv /tmp/kubectl-gadget /usr/local/bin/kubectl-gadget
-
-# Deploy agent inside cluster
-kubectl gadget deploy
-```
-
-### 3. Build & Deploy the Target Application
-Point your Docker daemon to Minikube, build the image, and apply the deployment manifests:
-```bash
-# Configure terminal environment
-eval $(minikube -p minikube docker-env)
-
-# Build image
-docker build -t ebpf-target-app:latest ./app
-
-# Deploy App & Redis
-kubectl apply -f kubernetes/redis.yaml
-kubectl apply -f kubernetes/app.yaml
-```
-
-### 4. Synthesize Network Policies
-Execute the automation script. It starts the background tracer, restarts the app to catch boot-time DB handshakes, triggers in-cluster HTTP test traffic, compiles the results, and writes the output:
-```bash
-# Make script executable
-chmod +x scripts/synthesize.sh
-
-# Run synthesis
-./scripts/synthesize.sh
-```
-
-Review your generated zero-trust security configuration:
-```bash
-cat policies/synthesized-policies.yaml
-```
+## 📄 License
+This project is licensed under the MIT License. See the `LICENSE` file for details.
