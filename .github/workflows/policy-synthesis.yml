@@ -1,0 +1,69 @@
+name: eBPF Zero-Trust Policy Synthesis
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  synthesize-policy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Needed to commit generated policies back to the PR branch
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }} # Checkout the PR branch so we can commit back to it
+
+      - name: Create KinD Cluster
+        uses: helm/kind-action@v1.8.0
+        with:
+          cluster_name: kind
+          config: |
+            kind: Cluster
+            apiVersion: kind.x-k8s.io/v1alpha4
+            networking:
+              disableDefaultCNI: true # Disable default CNI so we can install Calico CNI
+              podSubnet: "192.168.0.0/16"
+
+      - name: Install Calico CNI
+        run: |
+          kubectl apply -f https://raw.githubusercontent.com/projectcalico/calico/v3.26.1/manifests/calico.yaml
+          kubectl rollout status daemonset calico-node -n kube-system --timeout=120s
+
+      - name: Install Inspektor Gadget CLI & Agent
+        run: |
+          # Fetch the latest release version
+          IG_VERSION=$(curl -s https://api.github.com/repos/inspektor-gadget/inspektor-gadget/releases/latest | jq -r .tag_name)
+          
+          # Download and install client
+          curl -sL "https://github.com/inspektor-gadget/inspektor-gadget/releases/download/${IG_VERSION}/kubectl-gadget-linux-amd64-${IG_VERSION}.tar.gz" | tar -C /tmp -xz
+          sudo mv /tmp/kubectl-gadget /usr/local/bin/kubectl-gadget
+          
+          # Deploy daemonset agent to the cluster
+          kubectl-gadget deploy
+
+      - name: Build and Load Docker Image
+        run: |
+          # Build target app docker image
+          docker build -t ebpf-target-app:latest ./app
+          
+          # Load it into the KinD cluster image cache
+          kind load docker-image ebpf-target-app:latest
+
+      - name: Deploy Redis and Application
+        run: |
+          kubectl apply -f kubernetes/redis.yaml
+          kubectl apply -f kubernetes/app.yaml
+          kubectl rollout status deployment target-app --timeout=90s
+
+      - name: Run eBPF Policy Synthesis Script
+        run: |
+          chmod +x scripts/synthesize.sh
+          ./scripts/synthesize.sh
+
+      - name: Commit Synthesized Policies back to PR
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: auto-synthesize zero-trust network policies [skip ci]"
+          file_pattern: "policies/*.yaml"

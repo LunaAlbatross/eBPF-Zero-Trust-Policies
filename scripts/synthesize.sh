@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# scripts/synthesize.sh
+set -e
+
+echo "🚀 Step 1: Starting Inspektor Gadget in the background..."
+# Run the advisor in the background and redirect output to a temporary file
+kubectl gadget run ghcr.io/inspektor-gadget/gadget/advise_networkpolicy:latest --namespace default > temp_output.yaml 2>&1 &
+TRACER_PID=$!
+
+# Ensure tracer process is killed if script exits early
+trap "kill -2 $TRACER_PID 2>/dev/null || true" EXIT
+
+echo "⏳ Waiting for tracer to initialize..."
+sleep 5
+
+echo "🔄 Step 2: Restarting application to capture boot-time connections..."
+kubectl rollout restart deployment target-app
+kubectl rollout status deployment target-app --timeout=60s
+
+echo "📡 Step 3: Triggering application endpoints to generate traffic..."
+# We trigger the traffic using a temporary pod inside the cluster.
+# This avoids port-forwarding and works perfectly in both local and CI/CD environments.
+kubectl run traffic-generator --image=curlimages/curl --rm -i --restart=Never -- sh -c '
+  curl -s http://target-app:8080/
+  curl -s "http://target-app:8080/store?key=sync&value=true"
+  curl -s http://target-app:8080/fetch?key=sync
+  curl -s http://target-app:8080/external
+' || true
+
+echo "🛑 Step 4: Stopping tracer and compiling policies..."
+# Send SIGINT (2) to Inspektor Gadget to stop tracing and flush output
+kill -2 $TRACER_PID
+
+# Wait for background process to terminate
+wait $TRACER_PID || true
+
+# Extract only the YAML content from the output
+mkdir -p policies
+cat temp_output.yaml | sed -n '/^apiVersion:/,$p' > policies/synthesized-policies.yaml
+
+# Clean up temp file
+rm -f temp_output.yaml
+
+echo "✅ Step 5: Policies successfully written to policies/synthesized-policies.yaml"
