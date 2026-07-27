@@ -31,25 +31,7 @@ spec:
       protocol: TCP
     to:
     - ipBlock:
-        cidr: 3.222.96.182/32
-  - ports:
-    - port: 443
-      protocol: TCP
-    to:
-    - ipBlock:
-        cidr: 3.233.92.44/32
-  - ports:
-    - port: 443
-      protocol: TCP
-    to:
-    - ipBlock:
-        cidr: 34.203.4.216/32
-  - ports:
-    - port: 443
-      protocol: TCP
-    to:
-    - ipBlock:
-        cidr: 44.207.180.194/32
+        cidr: 52.73.10.94/32
   - ports:
     - port: 6379
       protocol: TCP
