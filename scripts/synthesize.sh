@@ -22,9 +22,8 @@ echo "📡 Step 3: Triggering application endpoints to generate traffic..."
 # This avoids port-forwarding and works perfectly in both local and CI/CD environments.
 kubectl run traffic-generator --image=curlimages/curl --rm -i --restart=Never -- sh -c '
   curl -s http://target-app:8080/
-  curl -s "http://target-app:8080/store?key=sync&value=true"
-  curl -s http://target-app:8080/fetch?key=sync
-  curl -s http://target-app:8080/external
+  curl -s "http://target-app:8080/order?item=running-shoes&price=120.00"
+  curl -s http://target-app:8080/history
 ' || true
 
 echo "🛑 Step 4: Stopping tracer and compiling policies..."

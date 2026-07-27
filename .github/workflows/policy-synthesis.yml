@@ -49,9 +49,9 @@ jobs:
           # Load it into the KinD cluster image cache
           kind load docker-image ebpf-target-app:latest
 
-      - name: Deploy Redis and Application
+      - name: Deploy Database and Application
         run: |
-          kubectl apply -f kubernetes/redis.yaml
+          kubectl apply -f kubernetes/postgres.yaml
           kubectl apply -f kubernetes/app.yaml
           kubectl rollout status deployment target-app --timeout=90s
 

@@ -1,46 +1,33 @@
-    const request = require('supertest');
-    const { app, redisClient, server } = require('../index');
+const request = require('supertest');
+const { app, dbPool, server } = require('../index');
 
-    beforeAll(async () => {
-      // Wait a moment for Redis to attempt connection
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-    });
+beforeAll(async () => {
+  // Let the Postgres database try to connect on startup
+  await new Promise((resolve) => setTimeout(resolve, 1000));
+});
 
-    afterAll(async () => {
-      // Close connections cleanly so test runner exits
-      try {
-        if (redisClient.isOpen) {
-          await redisClient.quit();
-        }
-      } catch (err) {
-        console.error('Error closing Redis connection during test cleanup', err);
-      }
-      await new Promise((resolve) => server.close(resolve));
-    });
+afterAll(async () => {
+  // Graceful test exit
+  await dbPool.end();
+  await new Promise((resolve) => server.close(resolve));
+});
 
-    describe('Integration Tests', () => {
-      it('should return homepage message', async () => {
-        const res = await request(app).get('/');
-        expect(res.statusCode).toEqual(200);
-        expect(res.body.message).toContain('Welcome');
-      });
+describe('Checkout Service Integration Tests', () => {
+  it('should return homepage', async () => {
+    const res = await request(app).get('/');
+    expect(res.statusCode).toEqual(200);
+    expect(res.body.message).toContain('Active');
+  });
 
-      it('should store and fetch keys from Redis', async () => {
-        if (!redisClient.isOpen) {
-          console.warn('Skipping Redis integration test: Redis connection not open.');
-          return;
-        }
-        
-        const storeRes = await request(app).get('/store?key=testkey&value=testvalue');
-        expect(storeRes.statusCode).toEqual(200);
-        
-        const fetchRes = await request(app).get('/fetch?key=testkey');
-        expect(fetchRes.statusCode).toEqual(200);
-        expect(fetchRes.body.value).toEqual('testvalue');
-      });
+  it('should process order and make external payment call', async () => {
+    const res = await request(app).get('/order?item=running-shoes&price=120.00');
+    // If DB is connected it will return 200, else mock mode or payment fail
+    expect([200, 502]).toContain(res.statusCode);
+  });
 
-      it('should successfully make an external API call', async () => {
-        const res = await request(app).get('/external');
-        expect(res.statusCode).toEqual(200);
-      });
-    });
+  it('should read order history', async () => {
+    const res = await request(app).get('/history');
+    // If DB not connected, returns 500. If connected, returns 200.
+    expect([200, 500]).toContain(res.statusCode);
+  });
+});

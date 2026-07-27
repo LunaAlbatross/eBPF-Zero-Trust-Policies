@@ -22,8 +22,8 @@ spec:
         ports:
         - containerPort: 8080
         env:
-        - name: REDIS_URL
-          value: "redis://redis.default.svc.cluster.local:6379"
+        - name: DATABASE_URL
+          value: "postgresql://postgres:postgres@postgres.default.svc.cluster.local:5432/checkout"
 ---
 apiVersion: v1
 kind: Service

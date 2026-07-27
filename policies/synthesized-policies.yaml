@@ -1,7 +1,7 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: redis-network
+  name: postgres-network
   namespace: default
 spec:
   ingress:
@@ -10,11 +10,11 @@ spec:
         matchLabels:
           app: target-app
     ports:
-    - port: 6379
+    - port: 5432
       protocol: TCP
   podSelector:
     matchLabels:
-      app: redis
+      app: postgres
   policyTypes:
   - Ingress
   - Egress
@@ -31,14 +31,56 @@ spec:
       protocol: TCP
     to:
     - ipBlock:
+        cidr: 100.26.132.199/32
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 100.57.32.83/32
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 13.216.77.144/32
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 13.223.23.68/32
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 18.204.239.121/32
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 32.194.128.236/32
+  - ports:
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
         cidr: 52.73.10.94/32
   - ports:
-    - port: 6379
+    - port: 443
+      protocol: TCP
+    to:
+    - ipBlock:
+        cidr: 54.147.121.219/32
+  - ports:
+    - port: 5432
       protocol: TCP
     to:
     - podSelector:
         matchLabels:
-          app: redis
+          app: postgres
   - ports:
     - port: 53
       protocol: UDP
