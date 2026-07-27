@@ -1,6 +1,5 @@
 # 🛡️ eBPF Zero-Trust Policies
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A modern, automated DevSecOps pipeline that dynamically generates **least-privilege Kubernetes NetworkPolicies** by profiling container socket connections at the Linux kernel level using **eBPF**.
 
@@ -84,5 +83,3 @@ graph TD
 
 ---
 
-## 📄 License
-This project is licensed under the MIT License. See the `LICENSE` file for details.
