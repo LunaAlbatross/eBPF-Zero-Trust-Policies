@@ -6,6 +6,12 @@ metadata:
 spec:
   ingress:
   - from:
+    - ipBlock:
+        cidr: 192.168.82.7/32
+    ports:
+    - port: 5432
+      protocol: TCP
+  - from:
     - podSelector:
         matchLabels:
           app: target-app
@@ -31,7 +37,7 @@ spec:
       protocol: TCP
     to:
     - ipBlock:
-        cidr: 18.204.239.121/32
+        cidr: 3.93.135.160/32
   - ports:
     - port: 5432
       protocol: TCP
