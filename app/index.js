@@ -5,7 +5,6 @@ const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 8080;
 
-// PostgreSQL connection config
 const dbPool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/checkout'
 });
@@ -16,12 +15,10 @@ async function initializeDatabase() {
   let retries = 0;
   while (retries < maxRetries) {
     try {
-      // Attempt connection and verify structure
       const client = await dbPool.connect();
       isDbConnected = true;
       console.log('Connected to PostgreSQL database');
       
-      // Create schema table if not exists
       await client.query(`
         CREATE TABLE IF NOT EXISTS orders (
           id SERIAL PRIMARY KEY,
@@ -50,7 +47,6 @@ app.get('/', (req, res) => {
   res.json({ message: 'E-commerce Checkout Service Active' });
 });
 
-// Endpoint that processes order, saves to DB, and calls external payment gateway
 app.get('/order', async (req, res) => {
   const { item, price } = req.query;
   if (!item || !price) {
@@ -60,7 +56,6 @@ app.get('/order', async (req, res) => {
   let paymentStatus = 'failed';
   
   try {
-    // 1. Contact external Payment gateway (httpbin mock)
     console.log('Calling Payment Gateway...');
     const paymentResponse = await axios.post('https://httpbin.org/post', {
       amount: price,
@@ -76,7 +71,6 @@ app.get('/order', async (req, res) => {
     return res.status(502).json({ error: 'Payment gateway connection refused' });
   }
 
-  // 2. Save order details to PostgreSQL
   if (isDbConnected) {
     try {
       const result = await dbPool.query(
@@ -93,7 +87,6 @@ app.get('/order', async (req, res) => {
   res.json({ status: 'Processed (Mock mode)', order: { item, price, paymentStatus } });
 });
 
-// Read order history from DB
 app.get('/history', async (req, res) => {
   if (!isDbConnected) {
     return res.status(500).json({ error: 'Database service unavailable' });
@@ -108,7 +101,6 @@ app.get('/history', async (req, res) => {
   }
 });
 
-// Clean Shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received. Closing DB Pool...');
   await dbPool.end();

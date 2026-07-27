@@ -30,10 +30,9 @@ echo "=== 4. Building App Container Image inside Minikube ==="
 docker build -t ebpf-target-app:latest ./app
 
 echo "=== 5. Applying Kubernetes Manifests ==="
-# Clean up any leftover Redis resources from the old app demo using correct resource/name syntax
+# Clean up leftover Redis resources from the old demo
 kubectl delete deployment/redis service/redis --ignore-not-found=true
 
-# Apply new manifests
 kubectl apply -f kubernetes/postgres.yaml
 kubectl apply -f kubernetes/app.yaml
 kubectl rollout status deployment target-app --timeout=90s
