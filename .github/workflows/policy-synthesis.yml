@@ -1,8 +1,11 @@
 name: eBPF Zero-Trust Policy Synthesis
 
 on:
+  push:
+    branches: [ main ]
   pull_request:
     branches: [ main ]
+  workflow_dispatch: # Allows manual trigger from the GitHub Actions UI
 
 jobs:
   synthesize-policy:
@@ -13,7 +16,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.head_ref }} # Checkout the PR branch so we can commit back to it
+          ref: ${{ github.head_ref || github.ref_name }} # Checkout branch correctly for PR or push
 
       - name: Create KinD Cluster
         uses: helm/kind-action@v1.8.0
