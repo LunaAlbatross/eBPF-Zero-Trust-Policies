@@ -1,7 +1,6 @@
 # 🛡️ eBPF Zero-Trust Policies
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
 A modern, automated DevSecOps pipeline that dynamically generates **least-privilege Kubernetes NetworkPolicies** by profiling container socket connections at the Linux kernel level using **eBPF**.
 
@@ -39,22 +38,11 @@ Want to see the magic in action? You can run the entire pipeline locally to see 
 
 Just run our 1-click setup script:
 ```bash
+chmod +x run-demo.sh
 ./run-demo.sh
 ```
 
 *(This will start a Minikube cluster with Calico, install Inspektor Gadget, deploy the example app, trace the traffic, and generate your Zero-Trust policy in the `policies/` directory!)*
-
----
-
-## 🛠️ How to Use This For Your Own Projects
-
-This repository is designed to be a template for your own applications. Instead of profiling our dummy app, you can profile your production services!
-
-1. **Use this template:** Click the green **"Use this template"** button at the top of the GitHub repository.
-2. **Bring your code:** Replace the contents of the `app/` folder with your own Dockerized application (or microservices).
-3. **Update Manifests:** Modify the YAML files in `kubernetes/` to match your application's deployment needs.
-4. **Update the Traffic Generator:** Open `scripts/synthesize.sh`. In **Step 3**, modify the `curl` commands to trigger your application's actual internal and external endpoints. *(Alternatively, trigger your automated integration test suite here).*
-5. **Push and Automate:** When you open a Pull Request, the included GitHub Action (`.github/workflows/policy-synthesis.yml`) will automatically spin up a test cluster, profile your app, and commit the generated `NetworkPolicy` back to your branch!
 
 ---
 
@@ -85,8 +73,8 @@ graph TD
 .
 ├── .github/workflows/
 │   └── policy-synthesis.yml   # CI Pipeline orchestrator
-├── app/                       # 👈 REPLACE THIS with your application code
-├── kubernetes/                # 👈 REPLACE THIS with your deployment YAMLs
+├── app/                       # Target Node.js application code
+├── kubernetes/                # Deployment YAMLs for App & Redis DB
 ├── scripts/
 │   └── synthesize.sh          # eBPF automation & traffic generation
 ├── policies/                  
@@ -95,9 +83,6 @@ graph TD
 ```
 
 ---
-
-## 🤝 Contributing
-We welcome community contributions! If you want to add support for a new CNI (like Cilium) or improve the automation scripts, please open a Pull Request. For major changes, please open an Issue first to discuss what you would like to change.
 
 ## 📄 License
 This project is licensed under the MIT License. See the `LICENSE` file for details.
